@@ -1,7 +1,7 @@
 import json
 import re
 import time
-
+import traceback
 import execjs
 import pymysql
 import requests
@@ -94,7 +94,7 @@ class AccountChecker:
     def getpanzhidata(self):
         url = "https://api.pzds.com/api/web-client/v2/public/goodsPublic/page"
         payload = '{"action":{"keywords":[],"merchantMark":null,"goodsCatalogueId":6,"single1":2209,"single2":null,"single3":null,"gameId":43},"sort":"createTime","order":"DESC","page":1,"pageSize":100}'
-        context1 = execjs.compile(js_from_file('./test.js'))
+        context1 = execjs.compile(js_from_file('test.js'))
         result1 = context1.call("myJiaMi", str(payload))
         headers = {
             'Accept': 'application/json, text/plain, */*',
@@ -102,6 +102,7 @@ class AccountChecker:
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
             'Connection': 'keep-alive',
             'Content-Length': '136',
+            'Channelinfo':'{"channelCode":null,"tag":null,"channelType":null,"searchWord":"null"}',
             'Content-Type': 'application/json;charset=UTF-8',
             'DNT': '1',
             'Host': 'api.pzds.com',
@@ -133,29 +134,67 @@ class AccountChecker:
                     self.cursor.execute(sql)
                     self.db.commit()
         except  Exception as e:
-            self.db.rollback()
             print('getpanzhidata:' + e.__str__())
 
     def getpangxiedata(self):
-        url = "https://api.pxb7.com/api/product/list?game_id=61&rec=&category=%7B%221%22:2,%222%22:4,%223%22:0,%224%22:0,%229%22:[],%2211%22:[],%2212%22:[],%2213%22:[],%2214%22:[],%2215%22:[],%2216%22:[]%7D&scope=%7B%22min_price%22:%22%22,%22max_price%22:%22%22%7D&matchCon=&services=all&sort=%7B%22type%22:%22isnew%22,%22method%22:1%7D&page=1"
-
-        payload = {}
+        url = "https://api.pxb7.com/api/product/list?game_id=61&rec=&category=%7B%221%22:0,%222%22:0,%223%22:0,%224%22:0,%229%22:[],%2211%22:[],%2212%22:[],%2213%22:[],%2214%22:[],%2215%22:[],%2216%22:[]%7D&scope=%7B%22min_price%22:%22%22,%22max_price%22:%22%22%7D&services=all&sort=%7B%22type%22:%22isnew%22,%22method%22:1%7D&page=1"
+        payload = {
+            "game_id": 61,
+            "rec": "",
+            "category": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "9": [],
+                "11": [],
+                "12": [],
+                "13": [],
+                "14": [],
+                "15": [],
+                "16": []
+            },
+            "scope": {
+                "min_price": "",
+                "max_price": ""
+            },
+            "services": "all",
+            "sort": {
+                "type": "isnew",
+                "method": 1
+            },
+            "page": 1
+        }
+        context2 = execjs.compile(js_from_file('pangxiejiami.js'))
+        result2 = context2.call("pangxie", payload)
         headers = {
             'Accept': 'application/json, text/plain, */*',
-            'Accept-Encoding': 'gzip, deflate',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-            'Apitoken': 'bc45910aeffb9ab747057b9fdaf46a19',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'ApiToken': str(result2['ApiToken']),
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Dnt': '1',
             'Host': 'api.pxb7.com',
-            'Loginstatus': 'false',
-            'Token': '41b114b8e98778594c30b61b2b05322e',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0:',
-            'Cookie': 'acw_tc=1b5d0de72e2c602a3735bd7238338041876058f9989e04ea2f9f02c80b5d1847; aliyungf_tc=abecc25dccacb84f413834dda1f60ae2b5632cf132781a2b3aca7c43c7bcf6a5'
+            'LoginStatus': 'false',
+            'Origin': 'https://www.pxb7.com',
+            'Pragma': 'no-cache',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'randomStr': str(result2['RandomStr']),
+            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sign': str(result2['Sign']),
+            'timestamp': str(result2['Timestamp']),
+            'token': str(result2['token']),
+            'Cookie': 'acw_tc=2b8b5799d03c2c7cd85ae7d15587453dbe7bccbae6912614583068b220c2e061; aliyungf_tc=b071b2cb596818a83d137942c3f307ce410e5e02411f63933d5a8e3ee89d8ee6'
         }
+        print(headers)
         try:
-            response = requests.request("GET", url, headers=headers, data=payload)
+            response = requests.request("GET", url, headers=headers)
+            print(response.text)
             mydict = json.loads(response.text)
             a = mydict['data']['list']
             for tmp in a:
@@ -170,13 +209,11 @@ class AccountChecker:
                 self.cursor.execute(mysearch)
                 if not len(self.cursor.fetchall()):
                     self.check_and_notify_users()
-
                     sql = "insert into sanguosha(bianhao,price,des) values('{bianhao}',{price},'{des}') ".format(
                         bianhao=self.bianhao, price=self.price, des=self.des[:500])
                     self.cursor.execute(sql)
                     self.db.commit()
         except  Exception as e:
-            self.db.rollback()
             print('getpangxiedata:' + e.__str__())
 
     def clean_expired_users(self):
@@ -186,8 +223,8 @@ class AccountChecker:
                 cursor.execute(sql)
                 self.db.commit()
         except Exception as e:
+            traceback.print_exc()
             print(f"Error cleaning expired users: {e}")
-            self.db.rollback()
 
 if __name__ == '__main__':
     account_checker = AccountChecker()
